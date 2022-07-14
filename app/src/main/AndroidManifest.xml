@@ -20,7 +20,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ShowPicActivity" />
+        <activity android:name=".pic.ShowPicActivity" />
         <activity android:name=".RecordActivity" />
     </application>
 
