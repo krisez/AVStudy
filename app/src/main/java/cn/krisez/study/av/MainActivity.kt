@@ -33,14 +33,14 @@ class MainActivity : AppCompatActivity() {
 }
 
 private class MyAdapter(layoutRes: Int = R.layout.item_main) :
-    BaseQuickAdapter<Entry<out Activity>, BaseViewHolder>(layoutRes) {
-    override fun convert(holder: BaseViewHolder, item: Entry<out Activity>) {
+    BaseQuickAdapter<Entry, BaseViewHolder>(layoutRes) {
+    override fun convert(holder: BaseViewHolder, item: Entry) {
         holder.setText(R.id.text_view, item.name)
     }
 
 }
 
-data class Entry<T : Activity>(
+data class Entry(
     var name: String,
-    var clazz: Class<T>
+    var clazz: Class<out Activity>
 )
