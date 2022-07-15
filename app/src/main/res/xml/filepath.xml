@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path path="audio" name="audio" />
+    <external-path
+        name="public_path"
+        path="."/>
+    <external-files-path
+        name="ringtones"
+        path="Ringtones"/>
+</paths>

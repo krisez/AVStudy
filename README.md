@@ -1,7 +1,12 @@
 # 学习音视频项目仓库
 ## 更新日志
-- 2022.7.13 
+- v0.0.1
   - 初始化仓库
-- 2022.7.14 
+- v0.0.2
   - 配置修改
   - 加载图片的方式
+- v0.0.3
+  - MediaRecorder录音
+  - MediaPlayer播放
+  - AudioRecord录音
+  - AudioTrack播放
