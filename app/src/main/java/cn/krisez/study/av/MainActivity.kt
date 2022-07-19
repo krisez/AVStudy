@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import cn.krisez.study.av.audio.AudioRecordActivity
+import cn.krisez.study.av.camera.CameraApiActivity
 import cn.krisez.study.av.databinding.ActivityMainBinding
 import cn.krisez.study.av.pic.ShowPicActivity
 import com.chad.library.adapter.base.BaseQuickAdapter
@@ -15,7 +16,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mBinding: ActivityMainBinding
     private val list = arrayListOf(
         Entry("图片展示入口", ShowPicActivity::class.java),
-        Entry("音频录制", AudioRecordActivity::class.java)
+        Entry("音频录制", AudioRecordActivity::class.java),
+        Entry("CameraApi录制",CameraApiActivity::class.java)
     )
 
     private val mAdapter = MyAdapter()

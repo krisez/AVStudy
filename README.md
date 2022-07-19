@@ -10,3 +10,6 @@
   - MediaPlayer播放
   - AudioRecord录音
   - AudioTrack播放
+- v0.0.4
+  - [CameraX](app/src/java/cn/krisez/study/av/camera/CameraXActivity.kt)
+  - [Camera2](app/src/java/cn/krisez/study/av/camera/Camera2Activity.kt)

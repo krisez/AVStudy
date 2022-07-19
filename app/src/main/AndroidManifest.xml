@@ -3,6 +3,7 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -22,6 +23,10 @@
         </activity>
         <activity android:name=".pic.ShowPicActivity" />
         <activity android:name=".audio.AudioRecordActivity" />
+        <activity android:name=".camera.CameraApiActivity" />
+        <activity android:name=".camera.Camera2Activity" />
+        <activity android:name=".camera.CameraXActivity" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

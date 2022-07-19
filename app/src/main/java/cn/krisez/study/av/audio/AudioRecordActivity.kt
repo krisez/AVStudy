@@ -21,11 +21,12 @@ import androidx.core.app.ActivityCompat
 import cn.krisez.study.av.databinding.ActivityAudioRecordBinding
 import cn.krisez.study.av.util.PcmToWavUtil
 import kotlinx.coroutines.*
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.io.*
 
+/**
+ * @author krisez
+ * audio录制，[AudioRecord]和[MediaRecorder]
+ */
 @SuppressLint("SetTextI18n")
 class AudioRecordActivity : AppCompatActivity(), OnClickListener {
     private val permission = Manifest.permission.RECORD_AUDIO
@@ -317,57 +318,76 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
             .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build()
         outJob = CoroutineScope(Dispatchers.Main).launch {
             withContext(Dispatchers.IO) {
-                //MODE_STREAM写法，适用内存不足，文件太大的时候用
-                /*at = AudioTrack(aa,af,minBuffer,AudioTrack.MODE_STREAM,AudioManager.AUDIO_SESSION_ID_GENERATE)
-                isPlay = true
-                fis = FileInputStream(file)
-                val data = ByteArray(minBuffer)
-                val dataInputStream = DataInputStream(fis)
-                at?.play()
-                while (isPlay) {
-                    val len = dataInputStream.read(data)
-                    if (len == -1) {
-                        break
-                    }
-                    at?.write(data, 0, len)
-                }
-                try {
-                    dataInputStream.close()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }*/
-                //MODE_STATIC写法，适用内存足够，文件够小的时候用
-                fis = FileInputStream(file)
-                val size = fis?.channel?.size()?.toInt() ?: 0
-                if (size > 0) {
-                    val baos = ByteArrayOutputStream(size)
-                    var value: Int
-                    Log.d("AudioRecordActivity", "clickAudioTrack: 读取数据...")
-                    while (true) {
-                        value = fis?.read() ?: -1
-                        if (value != -1) {
-                            baos.write(value)
-                        } else {
-                            break
-                        }
-                    }
-                    val data = baos.toByteArray()
-                    try {
-                        fis?.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                val fileSize = file.length()
+                Log.i("AudioRecordActivity", "clickAudioTrack: File size is $fileSize,choose mode.")
+                //5mb的分割线
+                if (fileSize > 5 * 1024 * 1024) {
+                    Log.i("AudioRecordActivity", "clickAudioTrack: mode stream")
+                    //MODE_STREAM写法，适用内存不足，文件太大的时候用
                     at = AudioTrack(
                         aa,
                         af,
-                        data.size,
-                        AudioTrack.MODE_STATIC,
+                        minBuffer,
+                        AudioTrack.MODE_STREAM,
                         AudioManager.AUDIO_SESSION_ID_GENERATE
                     )
-                    at?.write(data, 0, data.size)
-                    Log.d("AudioRecordActivity", "clickAudioTrack: 播放PCM")
-                    at?.play()
                     isPlay = true
+                    fis = FileInputStream(file)
+                    val data = ByteArray(minBuffer)
+                    val dataInputStream = DataInputStream(fis)
+                    at?.play()
+                    while (isPlay) {
+                        val len = dataInputStream.read(data)
+                        if (len == -1) {
+                            break
+                        }
+                        at?.write(data, 0, len)
+                    }
+                    try {
+                        dataInputStream.close()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                } else if (fileSize > 0) {
+                    Log.i("AudioRecordActivity", "clickAudioTrack: mode static")
+                    //MODE_STATIC写法，适用内存足够，文件够小的时候用
+                    fis = FileInputStream(file)
+                    val size = fis?.channel?.size()?.toInt() ?: 0
+                    if (size > 0) {
+                        val baos = ByteArrayOutputStream(size)
+                        var value: Int
+                        Log.d("AudioRecordActivity", "clickAudioTrack: 读取数据...")
+                        while (true) {
+                            value = fis?.read() ?: -1
+                            if (value != -1) {
+                                baos.write(value)
+                            } else {
+                                break
+                            }
+                        }
+                        val data = baos.toByteArray()
+                        try {
+                            fis?.close()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        at = AudioTrack(
+                            aa,
+                            af,
+                            data.size,
+                            AudioTrack.MODE_STATIC,
+                            AudioManager.AUDIO_SESSION_ID_GENERATE
+                        )
+                        at?.write(data, 0, data.size)
+                        Log.d("AudioRecordActivity", "clickAudioTrack: 播放PCM")
+                        at?.play()
+                        isPlay = true
+                    }
+                } else {
+                    Log.e(
+                        "AudioRecordActivity",
+                        "clickAudioTrack: file '${file.path}' is not available,please check it."
+                    )
                 }
             }
         }

@@ -11,6 +11,7 @@ import cn.krisez.study.av.R
 import cn.krisez.study.av.databinding.ActivityShowPicBinding
 
 /**
+ * @author Krisez
  * 显示图片页面
  */
 private const val TAG = "IMG_PIC"
