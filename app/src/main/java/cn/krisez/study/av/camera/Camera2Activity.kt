@@ -56,7 +56,7 @@ class Camera2Activity : AppCompatActivity() {
                             val h = sv.height
                             val w = sv.width
                             val s = size.firstOrNull {
-                                it.width < h && it.height < w
+                                it.height == w
                             }
                             Log.d("Krisez", "size for: width ${s?.width} height ${s?.height}")
                             Log.d("Krisez", "size for: width $w $h")
@@ -153,7 +153,7 @@ class Camera2Activity : AppCompatActivity() {
         imageReader?.setOnImageAvailableListener({
             //解码、拍照用，需要注意处理
             val img = it.acquireLatestImage()
-            Log.d("Krisez", "createPreviewSession: $img")
+//            Log.d("Krisez", "createPreviewSession: $img")
             img.close()
         }, mHandler)
         val imReaderSurface = imageReader?.surface
