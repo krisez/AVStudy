@@ -2,7 +2,6 @@ package cn.krisez.study.av.camera
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.ImageFormat
 import android.hardware.camera2.*
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
@@ -31,7 +30,7 @@ class Camera2Activity : AppCompatActivity() {
         // 2. ImageReader, 需要对帧数据进行逐帧分析/处理
         // 3. OpenGL Texture or TextureView, 因为扩展性不建议使用
         // 4. RenderScript.Allocation, 并行处理（没懂）
-        val sv = binding.surfaceView2
+        val sv = binding.surfaceView
         sv.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 if (ActivityCompat.checkSelfPermission(
@@ -78,7 +77,8 @@ class Camera2Activity : AppCompatActivity() {
                 Log.d("Krisez", "onCreate: cameraId -> $id")
                 val characteristics = manager.getCameraCharacteristics(id)
                 val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-                Log.d("Krisez", "onCreate: $facing")
+                val level = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
+                Log.d("Krisez", "onCreate: face,level -> $facing---$level")
                 facing?.let {
                     if (facing == CameraCharacteristics.LENS_FACING_BACK) {
                         /*characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
@@ -94,7 +94,6 @@ class Camera2Activity : AppCompatActivity() {
                     }
                 }
             }
-            Log.d("Krisez", "onCreate: $flashSupport+$mCameraId")
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -107,39 +106,44 @@ class Camera2Activity : AppCompatActivity() {
                 val previewSurface = sv.holder.surface
                 val imReaderSurface = imageReader.surface
                 val targets = listOf(previewSurface, imReaderSurface)*/
-        val previewSurface = binding.surfaceView2.holder.surface
+        val previewSurface = binding.surfaceView.holder.surface
         val builder = mCameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         builder?.addTarget(previewSurface)
-        /*该方法过时
-        mCameraDevice?.createCaptureSession(listOf(previewSurface),object :CameraCaptureSession.StateCallback(){
+        val stateCallback = object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(session: CameraCaptureSession) {
-
+                mCameraDevice?.let {
+                    mSession = session
+                    builder?.set(
+                        CaptureRequest.CONTROL_AF_MODE,
+                        CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
+                    )
+                    val request = builder?.build()?.let {
+                        Log.d("Krisez", "onConfigured: ")
+                        mSession?.setRepeatingRequest(it, null, null)
+                    }
+                }
             }
 
             override fun onConfigureFailed(session: CameraCaptureSession) {
+                Log.d("Krisez", "onConfigureFailed: error")
             }
 
-        },null)*/
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        }
+        //该方法过时
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             mCameraDevice?.createCaptureSession(
-                SessionConfiguration(SessionConfiguration.SESSION_REGULAR,
+                listOf(previewSurface),
+                stateCallback,
+                null
+            )
+        } else {
+            mCameraDevice?.createCaptureSession(
+                SessionConfiguration(
+                    SessionConfiguration.SESSION_REGULAR,
                     listOf(OutputConfiguration(previewSurface)),
-                    { c -> Log.d("Krisez", "createPreviewSession: $c") },
-                    object : CameraCaptureSession.StateCallback() {
-                        override fun onConfigured(session: CameraCaptureSession) {
-                            mCameraDevice?.let {
-                                mSession = session
-                                builder?.set(CaptureRequest.CONTROL_AF_MODE,CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-                                val request = builder?.build()?.let {
-                                    mSession?.setRepeatingRequest(it,null,null)
-                                }
-                            }
-                        }
-
-                        override fun onConfigureFailed(session: CameraCaptureSession) {
-                        }
-
-                    })
+                    { c -> c.run() },
+                    stateCallback
+                )
             )
         }
     }
