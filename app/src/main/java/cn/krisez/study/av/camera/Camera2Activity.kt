@@ -154,7 +154,7 @@ class Camera2Activity : AppCompatActivity() {
             //解码、拍照用，需要注意处理
             val img = it.acquireLatestImage()
 //            Log.d("Krisez", "createPreviewSession: $img")
-            img.close()
+            img?.close()
         }, mHandler)
         val imReaderSurface = imageReader?.surface
         val builder = mCameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
@@ -204,5 +204,11 @@ class Camera2Activity : AppCompatActivity() {
                 )
             }
         }
+    }
+
+    override fun onDestroy() {
+        mSession?.close()
+        mCameraDevice?.close()
+        super.onDestroy()
     }
 }
