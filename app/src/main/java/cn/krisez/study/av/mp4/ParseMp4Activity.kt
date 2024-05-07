@@ -1,5 +1,11 @@
 package cn.krisez.study.av.mp4
 
+import android.R.attr
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -11,7 +17,10 @@ import cn.krisez.study.av.databinding.ActivityParseMp4Binding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
+
 
 class ParseMp4Activity : AppCompatActivity() {
     private lateinit var binding: ActivityParseMp4Binding
@@ -40,7 +49,7 @@ class ParseMp4Activity : AppCompatActivity() {
                             maxSize = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
                             videoTrack = i
                             codec = MediaCodec.createDecoderByType(type ?: "")
-                            codec.configure(format, holder.surface, null, 0)
+                            codec.configure(format, null, null, 0)
                             codec.start()
                         }
                     }
@@ -52,7 +61,7 @@ class ParseMp4Activity : AppCompatActivity() {
                     var inputBufferId = -1
                     val bf = ByteBuffer.allocate(maxSize)
                     var isLoop = true
-                    val bytes = byteArrayOf()
+//                    val bytes = arrayListOf<Byte>()
                     while (isLoop) {
                         inputBufferId = codec?.dequeueInputBuffer(-1) ?: -1
                         Log.d("Krisez", "surfaceCreated: inputBufferId->$inputBufferId")
@@ -78,9 +87,35 @@ class ParseMp4Activity : AppCompatActivity() {
                         Log.d("Krisez", "surfaceCreated: outputId->$outputId")
                         if (isLoop && outputId > -1) {
                             val out = codec?.getOutputBuffer(outputId)
-//                            out?.
-                            Log.d("Krisez", "surfaceCreated: ${out.toString()}")
-                            codec?.releaseOutputBuffer(outputId, bufferInfo.presentationTimeUs * 1000L  + startMs)
+                            val fo = codec?.outputFormat
+                            val y = ByteArray(1920 * 1080)
+                            val u = ByteArray((1920 / 2) * (1080 / 2))
+                            val v = ByteArray(u.size)
+                            out?.get(y, 0, y.size)
+                            for (i in 0 until u.size * 2 step 2) {
+                                out?.get(v, i / 2, 1)
+                                out?.get(u, i / 2, 1)
+                            }
+                            val data = ByteArray(y.size + u.size + v.size)
+                            System.arraycopy(y, 0, data, 0, y.size)
+// yyyy vu vu
+                            for (i in 0 until u.size * 2 step 2) {
+                                data[y.size + i] = v[i / 2]
+                                data[y.size + i + 1] = u[i / 2]
+                            }
+                            val outputStream = ByteArrayOutputStream()
+                            val image = YuvImage(data, ImageFormat.NV21, 1920, 1080, null)
+                            val rect = Rect(0, 0, 1920, 1080)
+                            image.compressToJpeg(rect, 100, outputStream)
+                            val bitmap = BitmapFactory.decodeByteArray(outputStream.toByteArray(), 0, outputStream.size())
+                            Log.d("Krisez", "surfaceCreated: ${bitmap?.height},${bitmap?.width}")
+                            val canvas = holder.lockCanvas()
+                            canvas?.drawBitmap(bitmap,0f,0f, Paint())
+                            holder.unlockCanvasAndPost(canvas)
+                            bitmap?.recycle()
+//                            Log.d("Krisez", "surfaceCreated: $bytes")
+                            codec?.releaseOutputBuffer(outputId, true)
+//                            codec?.releaseOutputBuffer(outputId, bufferInfo.presentationTimeUs * 1000L + startMs)
 //                            codec?.releaseOutputBuffer(outputId, me.sampleTime* 1000L  + startMs)  //这样一卡一卡的。。
                         } else {
                             Log.d("Krisez", "surfaceCreated: end decode")
