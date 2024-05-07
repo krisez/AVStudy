@@ -11,7 +11,9 @@ import android.view.SurfaceHolder
 import androidx.appcompat.app.AppCompatActivity
 import cn.krisez.study.av.databinding.ActivityCamera1Binding
 
-
+/**
+ * camera1的实现方式，官方标注【过时】
+ */
 class Camera1Activity : AppCompatActivity() {
     private lateinit var binding: ActivityCamera1Binding
     private var mFrontCameraId = -1
@@ -38,6 +40,7 @@ class Camera1Activity : AppCompatActivity() {
                 mBackCameraInfo = info
             }
         }
+        //打开摄像头
         mCamera = Camera.open(mBackCameraId)
         adjustCameraOrientation(mBackCameraInfo)
         val sv = binding.surfaceView1
@@ -75,9 +78,8 @@ class Camera1Activity : AppCompatActivity() {
                 //设置预览大小
                 setPreviewSize(bestSize.width, bestSize.height)
                 //设置图片大小，拍照
-                setPreviewSize(bestSize.width, bestSize.height)
                 setPictureSize(bestSize.width, bestSize.height)
-                previewFormat = ImageFormat.NV21
+                previewFormat = ImageFormat.YUY2
                 //设置聚焦
                 focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE
                 mCamera?.parameters = this

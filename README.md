@@ -14,3 +14,6 @@
   - [Camera1](app/src/java/cn/krisez/study/av/camera/Camera1Activity.kt)
   - [CameraX](app/src/java/cn/krisez/study/av/camera/CameraXActivity.kt)
   - [Camera2](app/src/java/cn/krisez/study/av/camera/Camera2Activity.kt)
+- v0.0.5
+  - [解析MP4](app/src/java/cn/krisez/study/av/mp4/parse/parse.kt)
+  - [封装MP4](app/src/java/cn/krisez/study/av/mp4/assemble.kt))

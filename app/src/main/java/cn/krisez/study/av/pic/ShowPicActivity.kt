@@ -15,6 +15,7 @@ import cn.krisez.study.av.databinding.ActivityShowPicBinding
  * 显示图片页面
  */
 private const val TAG = "IMG_PIC"
+
 class ShowPicActivity : AppCompatActivity() {
     private lateinit var binding: ActivityShowPicBinding
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,12 +27,12 @@ class ShowPicActivity : AppCompatActivity() {
         }
         val surfaceView = binding.surfaceView
         val holder = surfaceView.holder
-        holder.setFixedSize(1080, 1920)
+        val bitmap = BitmapFactory.decodeResource(resources, R.mipmap.not_found)
+        holder.setFixedSize(bitmap.width, bitmap.height)
         holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
                 val paint = Paint()
                 paint.isAntiAlias = true
-                val bitmap = BitmapFactory.decodeResource(resources, R.mipmap.not_found)
                 val c = holder.lockCanvas()
                 Log.d(TAG, "surfaceCreated: ${bitmap.width},${bitmap.height}")
                 Log.d(TAG, "surfaceCreated: ${surfaceView.width},${surfaceView.height}")

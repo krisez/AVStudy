@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import cn.krisez.study.av.R
 
@@ -38,11 +39,17 @@ class MyImgView : View {
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         paint.isAntiAlias = true
-        rect?.let {
-            canvas?.drawBitmap(
-                bitmap, it, it, paint
-            )
+        if (!bitmap.isRecycled) {
+            rect?.let {
+                canvas?.drawBitmap(
+                    bitmap, it, it, paint
+                )
+            }
+            bitmap.recycle()
+        } else {
+            init()
+            invalidate()
+            Log.d("Krisez", "onDraw-48: bitmap has recycled,re-create")
         }
-//        bitmap.recycle()
     }
 }
