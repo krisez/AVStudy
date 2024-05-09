@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import cn.krisez.study.av.audio.AudioRecordActivity
 import cn.krisez.study.av.camera.CameraApiActivity
 import cn.krisez.study.av.databinding.ActivityMainBinding
+import cn.krisez.study.av.mp4.Mp4Activity
 import cn.krisez.study.av.mp4.ParseMp4Activity
 import cn.krisez.study.av.pic.ShowPicActivity
 import com.chad.library.adapter.base.BaseQuickAdapter
@@ -19,7 +20,7 @@ class MainActivity : AppCompatActivity() {
         Entry("图片展示入口", ShowPicActivity::class.java),
         Entry("音频录制", AudioRecordActivity::class.java),
         Entry("CameraApi录制", CameraApiActivity::class.java),
-        Entry("解析MP4", ParseMp4Activity::class.java),
+        Entry("MP4-Video", Mp4Activity::class.java),
     )
 
     private val mAdapter = MyAdapter()

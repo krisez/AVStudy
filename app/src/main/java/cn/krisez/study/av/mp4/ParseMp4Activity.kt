@@ -16,30 +16,42 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
+import kotlin.math.roundToInt
 
 
 class ParseMp4Activity : AppCompatActivity() {
     private lateinit var binding: ActivityParseMp4Binding
+    private var isLoopAudio = true
+    private var isLoopVideo = true
+    private var audioCodec: MediaCodec? = null
+    var at: AudioTrack? = null
+    private var videoCodec: MediaCodec? = null
+    private var w: Int = 0
+    private var h: Int = 0
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityParseMp4Binding.inflate(layoutInflater)
         setContentView(binding.root)
         val surfaceView = binding.surfaceView
+
         val holder = surfaceView.holder
         holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
+                w = surfaceView.width
+                h = surfaceView.height
                 decodeVideo()
                 decodeAudio()
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-
+                Log.d("Krisez", "surfaceChanged: $width--$height")
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
                 holder.removeCallback(this)
             }
         })
+
     }
 
     private fun decodeAudio() {
@@ -49,14 +61,12 @@ class ParseMp4Activity : AppCompatActivity() {
 //                    me.setDataSource("http://172.20.136.111/media/雅俗共赏.mp4")
             val count = me.trackCount
             var audioTrack = -1
-            var codec: MediaCodec? = null
             var frequency = 44100
             var minBuffer = 0
             val aa = AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .build()
             var af: AudioFormat? = null
-            var at: AudioTrack? = null
             for (i in 0 until count) {
                 val format = me.getTrackFormat(i)
                 val type = format.getString(MediaFormat.KEY_MIME)
@@ -81,21 +91,20 @@ class ParseMp4Activity : AppCompatActivity() {
                         AudioManager.AUDIO_SESSION_ID_GENERATE
                     )
                     audioTrack = i
-                    codec = MediaCodec.createDecoderByType(type ?: "")
-                    codec.configure(format, null, null, 0)
-                    codec.start()
+                    audioCodec = MediaCodec.createDecoderByType(type ?: "")
+                    audioCodec?.configure(format, null, null, 0)
+                    audioCodec?.start()
                 }
             }
             me.selectTrack(audioTrack)
             val bufferInfo = MediaCodec.BufferInfo()
             var sampleSize = -1
             var inputBufferId = -1
-            var isLoop = true
             val bf = ByteBuffer.allocate(minBuffer)
             val startMs = System.nanoTime()
             at?.play()
-            while (isLoop) {
-                inputBufferId = codec?.dequeueInputBuffer(-1) ?: -1
+            while (isLoopAudio) {
+                inputBufferId = audioCodec?.dequeueInputBuffer(-1) ?: -1
                 Log.d("Krisez", "decodeAudio: inputBufferId->$inputBufferId")
                 if (inputBufferId >= 0) {
                     sampleSize = me.readSampleData(bf, 0)
@@ -103,31 +112,37 @@ class ParseMp4Activity : AppCompatActivity() {
                     val time = me.sampleTime
                     Log.d("Krisez", "decodeAudio: time->$time")
                     if (sampleSize < 0) {
-                        codec?.queueInputBuffer(inputBufferId, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                        isLoop = false
+                        audioCodec?.queueInputBuffer(inputBufferId, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                        isLoopAudio = false
                     } else {
                         bufferInfo.presentationTimeUs = me.sampleTime
                         bufferInfo.offset = 0
                         bufferInfo.flags = me.sampleFlags
                         bufferInfo.size = sampleSize
-                        codec?.getInputBuffer(inputBufferId)?.put(bf)
-                        codec?.queueInputBuffer(inputBufferId, 0, sampleSize, time, 0)
+                        audioCodec?.getInputBuffer(inputBufferId)?.put(bf)
+                        audioCodec?.queueInputBuffer(inputBufferId, 0, sampleSize, time, 0)
                     }
                 }
 
-                val outputId = codec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
+                val outputId = audioCodec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
                 Log.d("Krisez", "decodeAudio: outputId->$outputId")
-                if (isLoop && outputId > -1) {
-                    val bytebuffer = codec?.getOutputBuffer(outputId)
+                if (isLoopAudio && outputId > -1) {
+                    val bytebuffer = audioCodec?.getOutputBuffer(outputId)
                     // 拿到原始的pcm数据通过AudioTrack播放
                     val bytes = ByteArray(bytebuffer?.remaining() ?: 0)
                     bytebuffer?.get(bytes)
                     at?.write(bytes, 0, bytes.size)
 //                    codec?.releaseOutputBuffer(outputId, bufferInfo.presentationTimeUs * 1000L + startMs)
-                    codec?.releaseOutputBuffer(outputId,false)
+                    audioCodec?.releaseOutputBuffer(outputId, false)
                 }
                 me.advance()
             }
+            audioCodec?.stop()
+            audioCodec?.release()
+            audioCodec = null
+            at?.stop()
+            at = null
+            me.release()
         }
     }
 
@@ -138,7 +153,6 @@ class ParseMp4Activity : AppCompatActivity() {
 //                    me.setDataSource("http://172.20.136.111/media/雅俗共赏.mp4")
             val count = me.trackCount
             var videoTrack = -1
-            var codec: MediaCodec? = null
             var maxSize = -1
             for (i in 0 until count) {
                 val format = me.getTrackFormat(i)
@@ -146,13 +160,26 @@ class ParseMp4Activity : AppCompatActivity() {
                 val isVideo = type?.contains("video") == true
                 Log.d("Krisez", "decodeVideo: $format")
                 if (isVideo) {
+                    val videoW = format.getInteger(MediaFormat.KEY_WIDTH)
+                    val videoH = format.getInteger(MediaFormat.KEY_HEIGHT)
+                    val rate = videoW / 1f / videoH
+                    binding.surfaceView.post {
+                        Log.d("Krisez", "decodeVideoss: $w--$h")
+                        Log.d("Krisez", "decodeVideoss: $w--${(w / rate)}")
+//                        binding.surfaceView.holder.setFixedSize(w, (w / rate).toInt())
+                        val lp = binding.surfaceView.layoutParams
+                        lp.height = (w / rate).roundToInt()
+                        binding.surfaceView.layoutParams = lp
+                    }
+//                    if (videoH > videoW) {
+//                    }
                     maxSize = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
                     videoTrack = i
-                    codec = MediaCodec.createDecoderByType(type ?: "")
+                    videoCodec = MediaCodec.createDecoderByType(type ?: "")
                     // 给了surface 会直接把解码后的数据给到surface缓冲区，就拿不到原始数据，设置surface为null 就能拿到原始数据
-                    codec.configure(format, binding.surfaceView.holder.surface, null, 0)
+                    videoCodec?.configure(format, binding.surfaceView.holder.surface, null, 0)
 //                    codec.configure(format, null, null, 0)
-                    codec.start()
+                    videoCodec?.start()
                 }
             }
             me.selectTrack(videoTrack)
@@ -161,9 +188,8 @@ class ParseMp4Activity : AppCompatActivity() {
             var sampleSize = -1
             var inputBufferId = -1
             val bf = ByteBuffer.allocate(maxSize)
-            var isLoop = true
-            while (isLoop) {
-                inputBufferId = codec?.dequeueInputBuffer(-1) ?: -1
+            while (isLoopVideo) {
+                inputBufferId = videoCodec?.dequeueInputBuffer(-1) ?: -1
                 Log.d("Krisez", "decodeVideo: inputBufferId->$inputBufferId")
                 if (inputBufferId >= 0) {
                     sampleSize = me.readSampleData(bf, 0)
@@ -171,21 +197,21 @@ class ParseMp4Activity : AppCompatActivity() {
                     val time = me.sampleTime
                     Log.d("Krisez", "decodeVideo: time->$time")
                     if (sampleSize < 0) {
-                        codec?.queueInputBuffer(inputBufferId, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                        isLoop = false
+                        videoCodec?.queueInputBuffer(inputBufferId, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                        isLoopVideo = false
                     } else {
                         bufferInfo.presentationTimeUs = me.sampleTime
                         bufferInfo.offset = 0
                         bufferInfo.flags = me.sampleFlags
                         bufferInfo.size = sampleSize
-                        codec?.getInputBuffer(inputBufferId)?.put(bf)
-                        codec?.queueInputBuffer(inputBufferId, 0, sampleSize, time, 0)
+                        videoCodec?.getInputBuffer(inputBufferId)?.put(bf)
+                        videoCodec?.queueInputBuffer(inputBufferId, 0, sampleSize, time, 0)
                     }
                 }
 
-                val outputId = codec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
+                val outputId = videoCodec?.dequeueOutputBuffer(bufferInfo, 10000) ?: -1
                 Log.d("Krisez", "decodeVideo: outputId->$outputId")
-                if (isLoop && outputId > -1) {
+                if (isLoopVideo && outputId > -1) {
                     // 获取原始数据
                     //val out = codec?.getOutputBuffer(outputId)
                     /*val out = codec?.getOutputImage(outputId) //获取image数据方便点
@@ -220,17 +246,32 @@ class ParseMp4Activity : AppCompatActivity() {
                     codec?.releaseOutputBuffer(outputId, true)*/
                     // over原始数据
                     // 控制时间，直接释放在surface上
-                    codec?.releaseOutputBuffer(outputId, bufferInfo.presentationTimeUs * 1000L + startMs)
+                    videoCodec?.releaseOutputBuffer(outputId, bufferInfo.presentationTimeUs * 1000L + startMs)
 //                            codec?.releaseOutputBuffer(outputId, me.sampleTime* 1000L  + startMs)  //这样一卡一卡的。。
                 } else {
                     Log.d("Krisez", "decodeVideo: end decode")
                 }
                 me.advance()
             }
-            codec?.stop()
-            codec?.release()
+            videoCodec?.stop()
+            videoCodec?.release()
+            videoCodec = null
             me.release()
         }
+    }
 
+    override fun onPause() {
+        isLoopAudio = false
+        isLoopVideo = false
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        audioCodec?.stop()
+        audioCodec?.release()
+        at?.stop()
+        videoCodec?.stop()
+        videoCodec?.release()
+        super.onDestroy()
     }
 }

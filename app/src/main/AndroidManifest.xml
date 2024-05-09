@@ -36,6 +36,8 @@
         <activity android:name=".camera.CameraXActivity" />
         <activity android:name=".camera.Camera1Activity" />
         <activity android:name=".mp4.ParseMp4Activity" />
+        <activity android:name="cn.krisez.study.av.mp4.Mp4Activity" />
+        <activity android:name="cn.krisez.study.av.mp4.AssembleMp4Activity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
