@@ -53,4 +53,14 @@
         android:enabled="true"
         android:gravity="center"
         android:text="@string/record_play_hint" />
+
+    <TextView
+        android:id="@+id/tv_audio_record_play_new"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        android:background="@color/color_tv_audio_bg"
+        android:enabled="true"
+        android:gravity="center"
+        android:text="@string/record_play_hint_low_delay" />
 </LinearLayout>

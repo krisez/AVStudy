@@ -31,6 +31,7 @@
         </activity>
         <activity android:name=".pic.ShowPicActivity" />
         <activity android:name=".audio.AudioRecordActivity" />
+        <activity android:name=".audio.LowDelayAudioActivity" />
         <activity android:name=".camera.CameraApiActivity" />
         <activity android:name=".camera.Camera2Activity" />
         <activity android:name=".camera.CameraXActivity" />

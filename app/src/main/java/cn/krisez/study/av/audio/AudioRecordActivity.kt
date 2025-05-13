@@ -15,6 +15,7 @@ import android.util.Log
 import android.view.View
 import android.view.View.OnClickListener
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -45,6 +46,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
         binding.tvAudioRecord.setOnClickListener(this)
         binding.tvAudioTrack.setOnClickListener(this)
         binding.tvAudioRecordPlay.setOnClickListener(this)
+        binding.tvAudioRecordPlayNew.setOnClickListener(this)
     }
 
     override fun onClick(v: View?) {
@@ -67,6 +69,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
                 binding.tvMediaPlayer.isEnabled = false
                 binding.tvAudioTrack.isEnabled = false
                 binding.tvAudioRecordPlay.isEnabled = false
+                binding.tvAudioRecordPlayNew.isEnabled = false
                 clickMediaRecord()
             }
 
@@ -76,6 +79,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
                 binding.tvMediaPlayer.isEnabled = true
                 binding.tvAudioTrack.isEnabled = false
                 binding.tvAudioRecordPlay.isEnabled = false
+                binding.tvAudioRecordPlayNew.isEnabled = false
                 clickMediaPlayer()
             }
 
@@ -85,6 +89,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
                 binding.tvMediaPlayer.isEnabled = false
                 binding.tvAudioTrack.isEnabled = false
                 binding.tvAudioRecordPlay.isEnabled = false
+                binding.tvAudioRecordPlayNew.isEnabled = false
                 clickAudioRecord()
             }
 
@@ -94,30 +99,36 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
                 binding.tvMediaPlayer.isEnabled = false
                 binding.tvAudioTrack.isEnabled = true
                 binding.tvAudioRecordPlay.isEnabled = false
+                binding.tvAudioRecordPlayNew.isEnabled = false
                 clickAudioTrack()
             }
 
             binding.tvAudioRecordPlay -> {
-                if (!checkHeadsetEnable()) {
-                    Toast.makeText(this, "请插入耳机或者使用蓝牙设备", Toast.LENGTH_SHORT).show()
-                    return
-                }
+                /*                if (!checkHeadsetEnable()) {
+                                    Toast.makeText(this, "请插入耳机或者使用蓝牙设备", Toast.LENGTH_SHORT).show()
+                                    return
+                                }*/
                 binding.tvMediaRecord.isEnabled = false
                 binding.tvAudioRecord.isEnabled = false
                 binding.tvMediaPlayer.isEnabled = false
                 binding.tvAudioTrack.isEnabled = false
                 binding.tvAudioRecordPlay.isEnabled = true
-               /* CoroutineScope(Dispatchers.Default).launch {
-                    while (true) {
-                        Log.d("Krisez", "onClick: 检测是否拔耳机")
-                        if (!checkHeadsetEnable()) {
-                            clickAudioRecord()
-                            break
-                        }
-                        delay(1000)
-                    }
-                }*/
+                binding.tvAudioRecordPlayNew.isEnabled = false
+                /* CoroutineScope(Dispatchers.Default).launch {
+                     while (true) {
+                         Log.d("Krisez", "onClick: 检测是否拔耳机")
+                         if (!checkHeadsetEnable()) {
+                             clickAudioRecord()
+                             break
+                         }
+                         delay(1000)
+                     }
+                 }*/
                 clickRecordAndPlay()
+            }
+
+            binding.tvAudioRecordPlayNew -> {
+                startActivity(Intent(this, LowDelayAudioActivity::class.java))
             }
         }
     }
@@ -148,7 +159,6 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
      * 点击按钮时，若正在录音则停止录音和播放并重置界面；否则检查权限，
      * 开启录音与播放，并在协程中持续将录音数据写入播放器。
      */
-
     private fun clickRecordAndPlay() {
         if (isRecord) {
             job?.cancel()
@@ -220,7 +230,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
 
         val aa = AudioAttributes.Builder()
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setUsage(AudioAttributes.USAGE_GAME)
             .build()
 
         val af = AudioFormat.Builder()
@@ -229,8 +239,16 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
             .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
             .build()
 
-        val audioTrack = AudioTrack(aa, af, outMinBuffer, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
-
+        val audioBuild = AudioTrack.Builder()
+        audioBuild.setAudioFormat(af)
+            .setAudioAttributes(aa)
+            .setSessionId(1)
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .setBufferSizeInBytes(outMinBuffer)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioTrack.Builder().setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+        }
+        val audioTrack = audioBuild.build()
         if (audioTrack.state != AudioTrack.STATE_INITIALIZED) {
             Toast.makeText(this, "播放初始化失败", Toast.LENGTH_SHORT).show()
             audioTrack.release()
@@ -252,7 +270,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
                     if (read > 0) {
                         try {
                             if (dataSize > 0) {
-                                audioTrack.write(data, 0, dataSize)
+                                audioTrack.write(data, 0, read)
                             }
                         } catch (e: Exception) {
                             Log.e("AudioRecordActivity", "写入播放数据失败", e)
@@ -277,6 +295,7 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
         binding.tvMediaPlayer.isEnabled = true
         binding.tvAudioTrack.isEnabled = true
         binding.tvAudioRecordPlay.isEnabled = true
+        binding.tvAudioRecordPlayNew.isEnabled = true
     }
 
     /**

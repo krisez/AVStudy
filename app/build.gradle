@@ -76,4 +76,6 @@ dependencies {
     implementation("androidx.camera:camera-view:${camerax_version}")
     // If you want to additionally use the CameraX Extensions library
     implementation("androidx.camera:camera-extensions:${camerax_version}")
+    // 新增oboe 库，耳返低延迟
+    implementation fileTree(include: ['*.aar'], dir: './libs')
 }
