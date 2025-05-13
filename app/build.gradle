@@ -11,7 +11,7 @@ android {
     defaultConfig {
         applicationId "cn.krisez.study.av"
         minSdk 23
-        targetSdk 32
+        targetSdk 34
         versionCode 2
         versionName "1.1"
 
