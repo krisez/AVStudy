@@ -52,5 +52,5 @@
         android:background="@color/color_tv_audio_bg"
         android:enabled="true"
         android:gravity="center"
-        android:text="边录边播，输出不能用手机自带扬声器，需要连接其他设备" />
+        android:text="@string/record_play_hint" />
 </LinearLayout>

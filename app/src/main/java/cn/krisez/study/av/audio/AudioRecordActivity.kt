@@ -18,6 +18,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import cn.krisez.study.av.R
 import cn.krisez.study.av.databinding.ActivityAudioRecordBinding
 import cn.krisez.study.av.util.PcmToWavUtil
 import kotlinx.coroutines.*
@@ -143,90 +144,132 @@ class AudioRecordActivity : AppCompatActivity(), OnClickListener {
     }
 
     /**
-     *
+     * 该函数实现“边录边播”功能。
+     * 点击按钮时，若正在录音则停止录音和播放并重置界面；否则检查权限，
+     * 开启录音与播放，并在协程中持续将录音数据写入播放器。
      */
 
     private fun clickRecordAndPlay() {
         if (isRecord) {
-            job?.cancel(null)
+            job?.cancel()
             ar?.stop()
             ar?.release()
             ar = null
             at?.stop()
             at?.release()
             at = null
-            binding.tvAudioRecordPlay.text = "边录边播，输出不能用手机自带扬声器，需要连接其他设备"
+            binding.tvAudioRecordPlay.text = getString(R.string.record_play_hint)
             resetAllBtn()
             isRecord = false
             isPlay = false
             return
         }
 
+        // 检查并释放旧资源
+        job?.cancel()
+        ar?.release().also { ar = null }
+        at?.release().also { at = null }
+
         minBuffer = AudioRecord.getMinBufferSize(
             frequency,
             AudioFormat.CHANNEL_IN_STEREO,
             AudioFormat.ENCODING_PCM_16BIT
         )
-        if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
-            ar = AudioRecord(
-                AudioSource.MIC,
-                frequency,
-                AudioFormat.CHANNEL_IN_STEREO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                minBuffer
-            )
-            val data = ByteArray(minBuffer)
-            ar?.startRecording()
-            isRecord = true
-            val outMinBuffer = AudioTrack.getMinBufferSize(
-                frequency,
-                AudioFormat.CHANNEL_OUT_STEREO,
-                AudioFormat.ENCODING_PCM_16BIT
-            )
-            val aa = AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .build()
-            val af = AudioFormat.Builder()
-                .setSampleRate(frequency)
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build()
-            at = AudioTrack(
-                aa,
-                af,
-                outMinBuffer,
-                AudioTrack.MODE_STREAM,
-                AudioManager.AUDIO_SESSION_ID_GENERATE
-            )
-            at?.play()
-            isPlay = true
-            try {
-                //开启协程，java代码可开启线程
-                job = CoroutineScope(Dispatchers.IO).launch {
-                    withContext(Dispatchers.IO) {
-                        while (isRecord) {
-                            val read = ar?.read(data, 0, minBuffer) ?: -1
-                            if (read > 0) {
-                                try {
-                                    val size = data.size
-                                    if (size > 0) {
-                                        at?.write(data, 0, data.size)
-                                    }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
+
+        if (minBuffer <= 0) {
+            Toast.makeText(this, "缓冲区大小无效", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "未授权", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val audioRecord = AudioRecord(
+            AudioSource.MIC,
+            frequency,
+            AudioFormat.CHANNEL_IN_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            minBuffer
+        )
+
+        if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+            Toast.makeText(this, "录音初始化失败", Toast.LENGTH_SHORT).show()
+            audioRecord.release()
+            return
+        }
+
+        val data = ByteArray(minBuffer)
+        audioRecord.startRecording()
+        isRecord = true
+
+        val outMinBuffer = AudioTrack.getMinBufferSize(
+            frequency,
+            AudioFormat.CHANNEL_OUT_STEREO,
+            AudioFormat.ENCODING_PCM_16BIT
+        )
+
+        if (outMinBuffer <= 0) {
+            Toast.makeText(this, "播放缓冲区大小无效", Toast.LENGTH_SHORT).show()
+            audioRecord.stop()
+            audioRecord.release()
+            isRecord = false
+            return
+        }
+
+        val aa = AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .build()
+
+        val af = AudioFormat.Builder()
+            .setSampleRate(frequency)
+            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+            .build()
+
+        val audioTrack = AudioTrack(aa, af, outMinBuffer, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE)
+
+        if (audioTrack.state != AudioTrack.STATE_INITIALIZED) {
+            Toast.makeText(this, "播放初始化失败", Toast.LENGTH_SHORT).show()
+            audioTrack.release()
+            audioRecord.stop()
+            audioRecord.release()
+            isRecord = false
+            return
+        }
+
+        audioTrack.play()
+        isPlay = true
+
+        val dataSize = data.size
+
+        try {
+            job = CoroutineScope(Dispatchers.IO).launch {
+                while (isActive && isRecord) {
+                    val read = audioRecord.read(data, 0, minBuffer)
+                    if (read > 0) {
+                        try {
+                            if (dataSize > 0) {
+                                audioTrack.write(data, 0, dataSize)
                             }
+                        } catch (e: Exception) {
+                            Log.e("AudioRecordActivity", "写入播放数据失败", e)
                         }
                     }
                 }
-                Log.d("AudioRecordActivity", "clickRecordAndPlay: 开始录音${job?.start()}")
-                binding.tvAudioRecordPlay.text = "正在录音"
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
-        } else {
-            Toast.makeText(this, "未授权", Toast.LENGTH_SHORT).show()
+            binding.tvAudioRecordPlay.text = getString(R.string.recording)
+        } catch (e: Exception) {
+            Log.e("AudioRecordActivity", "协程启动失败", e)
+            Toast.makeText(this, "录音启动失败", Toast.LENGTH_SHORT).show()
         }
+
+        ar = audioRecord
+        at = audioTrack
     }
+
 
     private fun resetAllBtn() {
         binding.tvMediaRecord.isEnabled = true
